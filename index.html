@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d2a24">
+<title>Viareggio ⇄ Pisa · traffico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef0ec; --fg:#17201b; --muted:#5b6660; --panel:#ffffff; --line:#d5dad5;
+  --a12:#00804a; --ss1:#0a5fb4; --ok:#1f8a4c; --warn:#c77700; --bad:#c62828;
+  color-scheme:light; box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#121815; --fg:#e7ece8; --muted:#9aa59f; --panel:#1b231f; --line:#2c3631; color-scheme:dark}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Titillium Web",system-ui,sans-serif;line-height:1.45}
+main{max-width:640px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.6rem;margin:0 0 4px;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 20px}
+.road{background:var(--panel);border:1px solid var(--line);border-radius:6px;margin-bottom:14px;overflow:hidden}
+.road header{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.shield{flex:none;min-width:58px;text-align:center;color:#fff;font-weight:700;font-size:1.25rem;padding:4px 8px;border-radius:4px;border:2px solid #fff;outline:2px solid}
+.shield.a12{background:var(--a12);outline-color:var(--a12)}
+.shield.ss1{background:var(--ss1);outline-color:var(--ss1)}
+.road h2{font-size:1.05rem;margin:0;font-weight:600}
+.dir{border-top:1px solid var(--line)}
+.dh{display:flex;align-items:center;padding:10px 16px}
+.dh h3{margin:0;font-size:.95rem;font-weight:600}
+.state{margin-left:auto;font-weight:700;font-size:.95rem;white-space:nowrap}
+.state.ok{color:var(--ok)} .state.warn{color:var(--warn)} .state.bad{color:var(--bad)} .state.unk{color:var(--muted)}
+.road ul{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.road li{padding:10px 16px;border-bottom:1px solid var(--line)}
+.road li:last-child{border-bottom:0}
+.road li b{display:block}
+.road li span{color:var(--muted);font-size:.9rem}
+.empty{padding:10px 16px;color:var(--muted);border-top:1px solid var(--line)}
+.controls{display:grid;gap:10px;margin-top:22px}
+button,select{font:inherit;color:inherit}
+button{background:var(--fg);color:var(--bg);border:0;border-radius:6px;padding:12px 14px;font-weight:600;cursor:pointer}
+button.secondary{background:transparent;color:var(--fg);border:1px solid var(--line)}
+button:disabled{opacity:.6;cursor:default}
+button:focus-visible,select:focus-visible{outline:3px solid var(--ss1);outline-offset:2px}
+label{display:block}
+select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+.status{color:var(--muted);font-size:.9rem;margin-top:14px}
+.err{color:var(--bad)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Viareggio ⇄ Pisa</h1>
+  <p class="sub">Code, incidenti e chiusure nelle due direzioni. Notifiche dal lunedì al venerdì.</p>
+
+  <section class="road" id="r-a12">
+    <header><div class="shield a12">A12</div><h2>Autostrada</h2></header>
+    <div class="dir" data-dir="pisa"><div class="dh"><h3>Verso Pisa</h3><div class="state unk">—</div></div><div class="body"></div></div>
+    <div class="dir" data-dir="viareggio"><div class="dh"><h3>Verso Viareggio</h3><div class="state unk">—</div></div><div class="body"></div></div>
+  </section>
+  <section class="road" id="r-ss1">
+    <header><div class="shield ss1">SS1</div><h2>Aurelia</h2></header>
+    <div class="dir" data-dir="pisa"><div class="dh"><h3>Verso Pisa</h3><div class="state unk">—</div></div><div class="body"></div></div>
+    <div class="dir" data-dir="viareggio"><div class="dh"><h3>Verso Viareggio</h3><div class="state unk">—</div></div><div class="body"></div></div>
+  </section>
+
+  <div class="controls">
+    <button id="check">Aggiorna</button>
+    <label>Avvisami da
+      <select id="minmag">
+        <option value="1">rallentamenti lievi</option>
+        <option value="2" selected>code moderate</option>
+        <option value="3">code gravi</option>
+      </select>
+    </label>
+    <button id="push" class="secondary">Attiva notifiche</button>
+  </div>
+  <p class="status" id="status"></p>
+</main>
+
+<script>
+const MAG={0:"entità non nota",1:"lieve",2:"moderata",3:"grave",4:"chiusura"};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ls={get(k,d){try{return localStorage.getItem(k)??d}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
+let reg=null;
+
+function render(road,dir,list){
+  const box=document.querySelector(`#r-${road} .dir[data-dir="${dir}"]`),st=box.querySelector(".state"),body=box.querySelector(".body");
+  if(!list.length){st.className="state ok";st.textContent="Scorrevole";body.innerHTML="";return}
+  const worst=Math.max(...list.map(i=>i.magnitude));
+  st.className="state "+(worst>=3?"bad":"warn");
+  st.textContent=worst>=4?"Chiusura":worst>=3?"Traffico intenso":"Rallentamenti";
+  body.innerHTML="<ul>"+list.map(i=>{
+    const bits=[i.from||i.to?`${i.from||"?"} → ${i.to||"?"}`:"",i.km?`${i.km} km`:"",i.delayMin?`+${i.delayMin} min`:"",MAG[i.magnitude]||"",i.dirUnknown?"direzione non certa":""];
+    return `<li><b>${esc(i.what)}</b><span>${esc(bits.filter(Boolean).join(", "))}</span></li>`;
+  }).join("")+"</ul>";
+}
+
+async function check(){
+  setStatus("Controllo in corso…");
+  try{
+    const r=await fetch("/.netlify/functions/traffic");
+    const d=await r.json();
+    if(d.error) throw new Error(d.error);
+    for(const road of ["a12","ss1"])for(const dir of ["pisa","viareggio"])render(road,dir,d[road][dir]);
+    setStatus("Ultimo controllo: "+new Date(d.updated).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}));
+  }catch(e){setStatus(e.message||"Controllo non riuscito.",true)}
+}
+function setStatus(t,err){const s=$("status");s.textContent=t;s.classList.toggle("err",!!err)}
+
+function b64ToBytes(b){const p="=".repeat((4-b.length%4)%4);const s=atob((b+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from(s,c=>c.charCodeAt(0))}
+
+async function sendSub(sub,method="POST"){
+  await fetch("/.netlify/functions/subscribe",{method,headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub,minmag:$("minmag").value})});
+}
+
+async function updatePushBtn(){
+  const b=$("push");
+  if(!reg||!("PushManager" in window)){b.textContent="Notifiche push non supportate";b.disabled=true;return}
+  const sub=await reg.pushManager.getSubscription();
+  b.disabled=false;
+  b.textContent=sub?"Disattiva notifiche":"Attiva notifiche";
+}
+
+$("push").onclick=async()=>{
+  const b=$("push");b.disabled=true;
+  try{
+    let sub=await reg.pushManager.getSubscription();
+    if(sub){await sendSub(sub,"DELETE");await sub.unsubscribe();setStatus("Notifiche disattivate.")}
+    else{
+      if(await Notification.requestPermission()!=="granted") throw new Error("Permesso notifiche negato.");
+      const {publicKey}=await (await fetch("/.netlify/functions/push-config")).json();
+      sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(publicKey)});
+      await sendSub(sub);
+      setStatus("Notifiche attive dal lunedì al venerdì, anche a schermo spento.");
+    }
+  }catch(e){setStatus(e.message||"Attivazione non riuscita.",true)}
+  updatePushBtn();
+};
+
+$("minmag").onchange=async()=>{
+  ls.set("minmag",$("minmag").value);
+  const sub=reg&&await reg.pushManager.getSubscription();
+  if(sub){await sendSub(sub);setStatus("Soglia aggiornata.")}
+};
+$("check").onclick=check;
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)check()});
+
+(async()=>{
+  $("minmag").value=ls.get("minmag","2");
+  if("serviceWorker" in navigator){try{reg=await navigator.serviceWorker.register("sw.js");await navigator.serviceWorker.ready}catch{reg=null}}
+  updatePushBtn();check();
+})();
+</script>
+</body>
+</html>

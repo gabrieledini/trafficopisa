@@ -67,7 +67,10 @@ export async function getTraffic() {
 export async function vapid() {
   let k = null;
   if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-    k = { publicKey: process.env.VAPID_PUBLIC_KEY, privateKey: process.env.VAPID_PRIVATE_KEY };
+    // Normalizza: niente spazi/virgolette, Base64 URL-safe senza padding "="
+    const clean = v => v.trim().replace(/^["']|["']$/g, "").replace(/\s+/g, "")
+      .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    k = { publicKey: clean(process.env.VAPID_PUBLIC_KEY), privateKey: clean(process.env.VAPID_PRIVATE_KEY) };
   }
   const s = store();
   if (!k) k = await s.get("vapid", { type: "json" });

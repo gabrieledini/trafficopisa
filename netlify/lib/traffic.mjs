@@ -65,8 +65,12 @@ export async function getTraffic() {
 
 // Chiavi VAPID generate al primo uso e salvate nei Blobs
 export async function vapid() {
+  let k = null;
+  if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    k = { publicKey: process.env.VAPID_PUBLIC_KEY, privateKey: process.env.VAPID_PRIVATE_KEY };
+  }
   const s = store();
-  let k = await s.get("vapid", { type: "json" });
+  if (!k) k = await s.get("vapid", { type: "json" });
   if (!k) {
     k = webpush.generateVAPIDKeys();
     await s.setJSON("vapid", k);

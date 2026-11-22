@@ -4,7 +4,8 @@ self.addEventListener("push", e => {
   let d = {};
   try { d = e.data.json(); } catch { d = { title: "Traffico verso Pisa", body: e.data ? e.data.text() : "" }; }
   e.waitUntil(self.registration.showNotification(d.title || "Traffico verso Pisa", {
-    body: d.body || "", tag: d.tag, renotify: false
+    body: d.body || "", tag: d.tag, renotify: false,
+    icon: "icons/icon-192.png", badge: "icons/favicon-32.png"
   }));
 });
 self.addEventListener("notificationclick", e => {

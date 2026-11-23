@@ -1,8 +1,8 @@
-import { getTraffic, store, vapid, webpush, isWeekday, DIR_LABEL } from "../lib/traffic.mjs";
+import { getTraffic, store, vapid, webpush, isWeekday, inNotifyWindow, DIR_LABEL } from "../lib/traffic.mjs";
 
 export default async () => {
-  // Notifiche solo dal lunedì al venerdì: nel weekend non interroga nemmeno TomTom
-  if (!isWeekday()) return;
+  // Notifiche solo lun–ven nelle fasce 7–10 e 16–19: fuori non interroga nemmeno TomTom
+  if (!isWeekday() || !inNotifyWindow()) return;
 
   await vapid();
   const s = store();

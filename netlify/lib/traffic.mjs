@@ -35,6 +35,15 @@ export function isWeekday(date = new Date()) {
   return !["Sat", "Sun"].includes(d);
 }
 
+// Fasce orarie delle notifiche, ora italiana: [inizio, fine) in ore
+export const NOTIFY_WINDOWS = [[7, 10], [16, 19]];
+
+// true se l'ora italiana cade in una delle fasce di NOTIFY_WINDOWS
+export function inNotifyWindow(date = new Date()) {
+  const h = Number(new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Rome", hour: "numeric", hourCycle: "h23" }).format(date));
+  return NOTIFY_WINDOWS.some(([a, b]) => h >= a && h < b);
+}
+
 export async function getTraffic() {
   const key = process.env.TOMTOM_KEY;
   if (!key) throw new Error("Variabile TOMTOM_KEY mancante su Netlify.");

@@ -60,7 +60,7 @@ select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;ba
 <body>
 <main>
   <h1>Viareggio ⇄ Pisa</h1>
-  <p class="sub">Code, incidenti e chiusure nelle due direzioni. Notifiche dal lunedì al venerdì.</p>
+  <p class="sub">Code, incidenti e chiusure nelle due direzioni. Notifiche dal lunedì al venerdì, 7–10 e 16–19.</p>
 
   <section class="road" id="r-a12">
     <header><div class="shield a12">A12</div><h2>Autostrada</h2></header>
@@ -145,7 +145,7 @@ $("push").onclick=async()=>{
       const publicKey=cfg.publicKey;
       sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(publicKey)});
       await sendSub(sub);
-      setStatus("Notifiche attive dal lunedì al venerdì, anche a schermo spento.");
+      setStatus("Notifiche attive dal lunedì al venerdì (7–10 e 16–19), anche a schermo spento.");
     }
   }catch(e){setStatus(e.message||"Attivazione non riuscita.",true)}
   updatePushBtn();

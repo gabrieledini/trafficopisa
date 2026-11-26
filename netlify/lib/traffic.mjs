@@ -27,21 +27,25 @@ function direction(g) {
   return d > 0 ? "pisa" : "viareggio";
 }
 
+// Tratta Aurelia monitorata: svincolo Viareggio Cotone (nord) – svincolo casello Pisa Nord (sud).
+// Latitudini approssimate, sovrascrivibili da Netlify con AURELIA_LAT_NORD / AURELIA_LAT_SUD.
+const AURELIA_NORD = +(process.env.AURELIA_LAT_NORD || 43.862);
+const AURELIA_SUD  = +(process.env.AURELIA_LAT_SUD  || 43.742);
+
+// true se l'evento tocca la tratta (anche solo in parte)
+function inAureliaSegment(g) {
+  if (!g || !g.coordinates) return false;
+  const pts = g.type === "Point" ? [g.coordinates] : g.coordinates;
+  const lats = pts.map(c => c[1]);
+  return Math.min(...lats) <= AURELIA_NORD && Math.max(...lats) >= AURELIA_SUD;
+}
+
 export const DIR_LABEL = { pisa: "verso Pisa", viareggio: "verso Viareggio" };
 
 // true dal lunedì al venerdì, ora italiana
 export function isWeekday(date = new Date()) {
   const d = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Rome", weekday: "short" }).format(date);
   return !["Sat", "Sun"].includes(d);
-}
-
-// Fasce orarie delle notifiche, ora italiana: [inizio, fine) in ore
-export const NOTIFY_WINDOWS = [[7, 10], [16, 19]];
-
-// true se l'ora italiana cade in una delle fasce di NOTIFY_WINDOWS
-export function inNotifyWindow(date = new Date()) {
-  const h = Number(new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Rome", hour: "numeric", hourCycle: "h23" }).format(date));
-  return NOTIFY_WINDOWS.some(([a, b]) => h >= a && h < b);
 }
 
 export async function getTraffic() {
@@ -56,6 +60,7 @@ export async function getTraffic() {
   for (const i of (await r.json()).incidents || []) {
     const p = i.properties, road = whichRoad(p);
     if (!road) continue;
+    if (road === "ss1" && !inAureliaSegment(i.geometry)) continue;
     const dir = direction(i.geometry);
     const item = {
       id: p.id,
@@ -76,10 +81,7 @@ export async function getTraffic() {
 export async function vapid() {
   let k = null;
   if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-    // Normalizza: niente spazi/virgolette, Base64 URL-safe senza padding "="
-    const clean = v => v.trim().replace(/^["']|["']$/g, "").replace(/\s+/g, "")
-      .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-    k = { publicKey: clean(process.env.VAPID_PUBLIC_KEY), privateKey: clean(process.env.VAPID_PRIVATE_KEY) };
+    k = { publicKey: process.env.VAPID_PUBLIC_KEY, privateKey: process.env.VAPID_PRIVATE_KEY };
   }
   const s = store();
   if (!k) k = await s.get("vapid", { type: "json" });

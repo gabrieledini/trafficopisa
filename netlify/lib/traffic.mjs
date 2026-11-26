@@ -42,6 +42,16 @@ function inAureliaSegment(g) {
 
 export const DIR_LABEL = { pisa: "verso Pisa", viareggio: "verso Viareggio" };
 
+// Finestra notifiche: lunedì–venerdì, ora italiana.
+// Fascia oraria opzionale da Netlify: NOTIFY_FROM / NOTIFY_TO (ore 0–24, es. 6 e 21).
+export function inNotifyWindow(date = new Date()) {
+  if (!isWeekday(date)) return false;
+  const from = process.env.NOTIFY_FROM, to = process.env.NOTIFY_TO;
+  if (from === undefined && to === undefined) return true;
+  const h = +new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Rome", hour: "2-digit", hour12: false }).format(date) % 24;
+  return h >= +(from ?? 0) && h < +(to ?? 24);
+}
+
 // true dal lunedì al venerdì, ora italiana
 export function isWeekday(date = new Date()) {
   const d = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Rome", weekday: "short" }).format(date);

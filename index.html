@@ -69,13 +69,7 @@ select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;ba
 
   <div class="controls">
     <button id="check">Aggiorna</button>
-    <label>Avvisami da
-      <select id="minmag">
-        <option value="1">rallentamenti lievi</option>
-        <option value="2" selected>code moderate</option>
-        <option value="3">code gravi</option>
-      </select>
-    </label>
+    <p class="sub" style="margin:0">Notifica quando il ritardo stimato supera i 15 minuti.</p>
     <button id="push" class="secondary">Attiva notifiche</button>
   </div>
   <p class="status" id="status"></p>
@@ -115,7 +109,7 @@ function setStatus(t,err){const s=$("status");s.textContent=t;s.classList.toggle
 function b64ToBytes(b){const p="=".repeat((4-b.length%4)%4);const s=atob((b+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from(s,c=>c.charCodeAt(0))}
 
 async function sendSub(sub,method="POST"){
-  await fetch("/.netlify/functions/subscribe",{method,headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub,minmag:$("minmag").value})});
+  await fetch("/.netlify/functions/subscribe",{method,headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub})});
 }
 
 async function updatePushBtn(){
@@ -142,16 +136,10 @@ $("push").onclick=async()=>{
   updatePushBtn();
 };
 
-$("minmag").onchange=async()=>{
-  ls.set("minmag",$("minmag").value);
-  const sub=reg&&await reg.pushManager.getSubscription();
-  if(sub){await sendSub(sub);setStatus("Soglia aggiornata.")}
-};
 $("check").onclick=check;
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)check()});
 
 (async()=>{
-  $("minmag").value=ls.get("minmag","2");
   if("serviceWorker" in navigator){try{reg=await navigator.serviceWorker.register("sw.js");await navigator.serviceWorker.ready}catch{reg=null}}
   updatePushBtn();check();
 })();

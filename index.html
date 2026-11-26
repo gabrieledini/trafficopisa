@@ -5,12 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1d2a24">
 <title>Viareggio ⇄ Pisa · traffico</title>
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
-<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-title" content="Traffico Pisa">
-<meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -60,7 +54,7 @@ select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;ba
 <body>
 <main>
   <h1>Viareggio ⇄ Pisa</h1>
-  <p class="sub">Code, incidenti e chiusure nelle due direzioni. Notifiche dal lunedì al venerdì, 7–10 e 16–19.</p>
+  <p class="sub">Code, incidenti e chiusure nelle due direzioni. Notifiche dal lunedì al venerdì.</p>
 
   <section class="road" id="r-a12">
     <header><div class="shield a12">A12</div><h2>Autostrada</h2></header>
@@ -68,7 +62,7 @@ select{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;ba
     <div class="dir" data-dir="viareggio"><div class="dh"><h3>Verso Viareggio</h3><div class="state unk">—</div></div><div class="body"></div></div>
   </section>
   <section class="road" id="r-ss1">
-    <header><div class="shield ss1">SS1</div><h2>Aurelia</h2></header>
+    <header><div class="shield ss1">SS1</div><h2>Aurelia · Cotone – Pisa Nord</h2></header>
     <div class="dir" data-dir="pisa"><div class="dh"><h3>Verso Pisa</h3><div class="state unk">—</div></div><div class="body"></div></div>
     <div class="dir" data-dir="viareggio"><div class="dh"><h3>Verso Viareggio</h3><div class="state unk">—</div></div><div class="body"></div></div>
   </section>
@@ -121,8 +115,7 @@ function setStatus(t,err){const s=$("status");s.textContent=t;s.classList.toggle
 function b64ToBytes(b){const p="=".repeat((4-b.length%4)%4);const s=atob((b+p).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from(s,c=>c.charCodeAt(0))}
 
 async function sendSub(sub,method="POST"){
-  const r=await fetch("/.netlify/functions/subscribe",{method,headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub,minmag:$("minmag").value})});
-  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||"Registrazione notifiche non riuscita (HTTP "+r.status+").")}
+  await fetch("/.netlify/functions/subscribe",{method,headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub,minmag:$("minmag").value})});
 }
 
 async function updatePushBtn(){
@@ -140,12 +133,10 @@ $("push").onclick=async()=>{
     if(sub){await sendSub(sub,"DELETE");await sub.unsubscribe();setStatus("Notifiche disattivate.")}
     else{
       if(await Notification.requestPermission()!=="granted") throw new Error("Permesso notifiche negato.");
-      const r=await fetch("/.netlify/functions/push-config");const cfg=await r.json().catch(()=>({}));
-      if(!r.ok||!cfg.publicKey) throw new Error(cfg.error||"Configurazione push non disponibile (HTTP "+r.status+").");
-      const publicKey=cfg.publicKey;
+      const {publicKey}=await (await fetch("/.netlify/functions/push-config")).json();
       sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToBytes(publicKey)});
       await sendSub(sub);
-      setStatus("Notifiche attive dal lunedì al venerdì (7–10 e 16–19), anche a schermo spento.");
+      setStatus("Notifiche attive dal lunedì al venerdì, anche a schermo spento.");
     }
   }catch(e){setStatus(e.message||"Attivazione non riuscita.",true)}
   updatePushBtn();

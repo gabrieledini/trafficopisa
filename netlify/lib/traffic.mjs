@@ -78,6 +78,7 @@ export async function getTraffic() {
       from: p.from || "", to: p.to || "",
       km: p.length ? +(p.length / 1000).toFixed(1) : null,
       delayMin: p.delay ? Math.round(p.delay / 60) : null,
+      delaySec: p.delay || 0,
       magnitude: p.magnitudeOfDelay || 0,
       dirUnknown: dir === null
     };
